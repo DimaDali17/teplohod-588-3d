@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Теплоход проекта 588 «Родина» — 3D-модель</title>
+<meta name="description" content="Эскизная 3D-модель речного круизного теплохода проекта 588: корпус, надстройки, расположение кают на четырёх палубах.">
+<style>
+  :root { --ink:#1d2731; --muted:#5d6b78; --line:#d5dde4; --panel:rgba(255,255,255,.95); --accent:#1f5f8b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:var(--ink); background:#e6edf2; overflow:hidden; }
+  #view { position:fixed; inset:0; }
+  .panel { position:fixed; top:12px; left:12px; width:282px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 14px 10px; font-size:13px; box-shadow:0 2px 10px rgba(20,40,60,.08); max-height:calc(100% - 24px); overflow:auto; z-index:2; }
+  h1 { font-size:15px; margin:0 0 2px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; }
+  .grp { border-top:1px solid var(--line); padding-top:9px; margin-top:9px; }
+  .grp-t { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; }
+  .row { display:flex; flex-wrap:wrap; gap:5px; }
+  button { font:inherit; font-size:12px; padding:5px 8px; border:1px solid var(--line); background:#fff; border-radius:7px; cursor:pointer; color:var(--ink); }
+  button:hover { border-color:#9fb2c2; }
+  button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  label.chk { display:flex; align-items:center; gap:7px; margin:3px 0; cursor:pointer; font-size:12.5px; }
+  .sw { width:14px; height:10px; border-radius:2px; border:1px solid rgba(0,0,0,.15); flex:none; }
+  .cnt { margin-left:auto; color:var(--muted); font-size:11px; }
+  input[type=text] { font:inherit; font-size:12.5px; width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:7px; }
+  input[type=range] { width:100%; }
+  .err { color:#b3261e; font-size:12px; margin-top:4px; }
+  .note { font-size:11px; color:var(--muted); line-height:1.45; }
+  table.sum { width:100%; border-collapse:collapse; font-size:12px; }
+  table.sum td, table.sum th { padding:2px 4px; border-bottom:1px solid #eef2f5; text-align:right; }
+  table.sum td:first-child, table.sum th:first-child { text-align:left; }
+  table.sum th { color:var(--muted); font-weight:500; }
+  #card { position:fixed; right:12px; top:12px; width:250px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:13px; display:none; z-index:2; box-shadow:0 2px 10px rgba(20,40,60,.08); }
+  #card h2 { font-size:14px; margin:0 0 6px; font-weight:600; padding-right:20px; }
+  #card .x { position:absolute; right:8px; top:6px; border:none; background:none; font-size:16px; color:var(--muted); }
+  #card dl { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; margin:0; font-size:12.5px; }
+  #card dt { color:var(--muted); }
+  #tip { position:fixed; pointer-events:none; background:#1d2731; color:#fff; font-size:12px; padding:6px 9px; border-radius:7px; display:none; white-space:nowrap; z-index:3; }
+  #load { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:14px; }
+  .hint { position:fixed; right:12px; bottom:10px; font-size:11px; color:var(--muted); background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:5px 9px; }
+  .lbl { position:absolute; font-size:10.5px; font-weight:600; color:#1d2731; background:rgba(255,255,255,.82); border-radius:4px; padding:0 3px; transform:translate(-50%,-50%); pointer-events:none; white-space:nowrap; }
+  #labels { position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:1; }
+  @media (max-width:700px){ .panel{ width:auto; right:12px; top:auto; bottom:12px; max-height:48%; } .hint{ display:none; } #card{ left:12px; right:12px; width:auto; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div id="labels"></div>
+<div id="load">Загрузка модели…</div>
+
+<div class="panel">
+  <h1>Теплоход проекта 588 «Родина»</h1>
+  <div class="sub">Эскизная 3D-модель · L 95,8 м · B 14,3 м · T 2,4 м</div>
+
+  <div class="grp">
+    <div class="grp-t">Режим</div>
+    <div class="row">
+      <button id="mExt" class="on">Снаружи</button>
+      <button id="mInt">Помещения внутри</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-t">Палуба</div>
+    <div class="row" id="decks">
+      <button data-deck="all" class="on">Все</button>
+      <button data-deck="boat">Шлюпочная</button>
+      <button data-deck="mid">Средняя</button>
+      <button data-deck="main">Главная</button>
+      <button data-deck="lower">Нижняя</button>
+    </div>
+    <label class="chk" style="margin-top:7px"><input type="checkbox" id="labelsChk" checked> Номера кают и названия</label>
+  </div>
+
+  <div class="grp">
+    <div class="grp-t">Найти помещение</div>
+    <input type="text" id="q" placeholder="№ каюты или название, напр. 88 или ресторан">
+    <div class="err" id="qErr"></div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-t"><span>Фильтр помещений</span><span id="allCats" style="cursor:pointer;text-transform:none;letter-spacing:0;color:var(--accent)">все / ни одного</span></div>
+    <div id="cats"></div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-t">Вид и разрез</div>
+    <div class="row">
+      <button data-cam="iso">3/4</button>
+      <button data-cam="side">Сбоку</button>
+      <button data-cam="top">Сверху</button>
+      <button data-cam="bow">С носа</button>
+      <button data-cam="stern">С кормы</button>
+    </div>
+    <div style="margin-top:8px;font-size:12px">Продольный разрез: <span id="cutV">нет</span></div>
+    <input type="range" id="cut" min="0" max="958" value="958">
+    <div style="font-size:12px">Разрез по ширине: <span id="cutYV">нет</span></div>
+    <input type="range" id="cutY" min="0" max="75" value="75">
+    <label class="chk"><input type="checkbox" id="water" checked> Вода (осадка 2,4 м)</label>
+  </div>
+
+  <div class="grp">
+    <div class="grp-t">Сводка по каютам</div>
+    <table class="sum" id="sum"></table>
+  </div>
+
+  <div class="grp note">
+    Восстановлено по чертежам общего вида т/х «Родина» и схеме палуб т/х «Святая Русь» (пр. 588) с miniflot.ru. Точность ±0,5 м; высоты палуб, мебель и подводная часть — схематично. Не является проектной документацией.
+  </div>
+</div>
+
+<div id="card"><button class="x" id="cardX" aria-label="Закрыть">×</button><h2 id="cardT"></h2><dl id="cardD"></dl></div>
+<div id="tip"></div>
+<div class="hint">Вращать — левая кнопка · сдвиг — правая · масштаб — колесо · клик по помещению — карточка</div>
+
+<script src="model588.js"></script>
+<script src="rooms.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const CATS = {
+  cab:   ['Каюты 2-местные', '#78c887'],
+  cab4:  ['Каюты 4-местные (нижняя)', '#5fbebe'],
+  lux:   ['Полулюксы', '#f09696'],
+  suite: ['Люксы', '#f5963c'],
+  pub:   ['Рестораны, бары, салоны', '#f0cd78'],
+  srv:   ['Служебные помещения', '#b9b9b9'],
+  wc:    ['Санузлы, душевые', '#82b4e6'],
+  tech:  ['Трапы, шахты', '#6e6e73'],
+  mech:  ['Машинное отделение', '#5f697d'],
+};
+const DECK_RU = { lower:'Нижняя палуба', main:'Главная палуба', mid:'Средняя палуба', boat:'Шлюпочная палуба', hull:'Корпус' };
+const ORDER = { lower:0, main:1, mid:2, boat:3 };
+const catOn = Object.fromEntries(Object.keys(CATS).map(k => [k, true]));
+
+const el = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = true;
+el.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe6edf2);
+scene.fog = new THREE.Fog(0xe6edf2, 240, 560);
+const camera = new THREE.PerspectiveCamera(35, innerWidth/innerHeight, 0.3, 2000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9aa8, 1.25));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(-60, 90, 50); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.06;
+Object.assign(sun.shadow.camera, { left:-70, right:70, top:40, bottom:-40, near:1, far:300 });
+scene.add(sun);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 900),
+  new THREE.MeshStandardMaterial({ color:0x4f86a8, transparent:true, opacity:0.55, roughness:0.35, depthWrite:false }));
+water.rotation.x = -Math.PI/2; water.position.y = 2.4; water.receiveShadow = true;
+scene.add(water);
+
+const clipX = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 1000);
+const clipZ = new THREE.Plane(new THREE.Vector3(0, 0, -1), 1000);
+const clips = [clipX, clipZ];
+
+const META = window.ROOMS588;
+const parts = [];
+const roomById = {};
+let mode = 'ext', deckSel = 'all', selected = null;
+
+function loadGLB(cb) {
+  const loader = new GLTFLoader();
+  if (window.MODEL588_B64) {
+    const bin = Uint8Array.from(atob(window.MODEL588_B64), c => c.charCodeAt(0)).buffer;
+    loader.parse(bin, '', cb, fail);
+  } else loader.load('model588.glb', cb, undefined, fail);
+}
+function fail() { document.getElementById('load').textContent = 'Не удалось загрузить модель.'; }
+
+loadGLB((gltf) => {
+  gltf.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const re = /^([a-z]+)-([a-z]+)-([pr])(\d+)/;
+    const m = re.exec(o.name) || re.exec(o.parent?.name || '');
+    if (!m) return;
+    const [, deck, kind, t, idStr] = m; const id = +idStr;
+    if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+    const hasVC = !!o.geometry.attributes.color;
+    o.material = new THREE.MeshStandardMaterial({ color: hasVC ? 0xffffff : o.material.color.clone(), vertexColors: hasVC,
+      roughness: kind === 'win' || kind === 'topwin' ? 0.25 : 0.75, metalness: 0, side: THREE.DoubleSide,
+      flatShading: kind !== 'hull', clippingPlanes: clips });
+    o.castShadow = !['win','topwin','room'].includes(kind); o.receiveShadow = true;
+    const room = t === 'r' ? META.rooms[id] : null;
+    const p = { mesh:o, deck, kind, name: room ? room.name : (META.parts[id] || {}).name, room };
+    parts.push(p); if (room) roomById[id] = p;
+  });
+  scene.add(gltf.scene);
+  document.getElementById('load').remove();
+  buildCats(); buildSummary(); buildLabels(); apply(); setCam('iso', false);
+});
+
+function apply() {
+  const lvl = deckSel === 'all' ? 9 : ORDER[deckSel];
+  const inside = mode === 'int' || deckSel !== 'all';
+  for (const p of parts) {
+    let vis = p.deck === 'hull' ? true : ORDER[p.deck] <= lvl;
+    if (p.kind === 'room') vis = vis && inside && catOn[p.room.cat] && (deckSel === 'all' || p.deck === deckSel);
+    if (p.deck === 'lower' && p.kind !== 'room') vis = vis && inside && (deckSel === 'all' || deckSel === 'lower');
+    if (inside && p.kind === 'win') vis = vis && p.deck === 'hull' && deckSel !== 'lower';
+    if (deckSel !== 'all' && p.deck === deckSel && ['roof','top','topwin'].includes(p.kind)) vis = false;
+    p.mesh.visible = vis;
+    const ghost = (inside && p.kind === 'shell') || (deckSel === 'lower' && p.deck === 'hull' && p.kind !== 'win');
+    const m = p.mesh.material;
+    m.transparent = ghost; m.opacity = ghost ? (p.kind === 'hull' ? 0.18 : 0.13) : 1; m.depthWrite = !ghost;
+    p.mesh.castShadow = !ghost && !['win','topwin','room'].includes(p.kind);
+    m.emissive.setHex(selected && p === selected ? 0x664400 : 0x000000);
+  }
+  water.visible = document.getElementById('water').checked && deckSel !== 'lower';
+  updateLabels();
+}
+
+function setCam(v, anim = true, target) {
+  const T = target ? target.clone() : new THREE.Vector3(0, 7, 0), P = new THREE.Vector3();
+  if (v === 'iso')   P.set(-88, 48, 104);
+  if (v === 'side')  P.set(0, 9, 165);
+  if (v === 'top')   { P.set(0.01, deckSel === 'lower' ? 140 : 175, 2); T.set(0, 0, 0); }
+  if (v === 'bow')   P.set(95, 18, 22);
+  if (v === 'stern') P.set(-95, 22, -26);
+  if (v === 'focus') P.copy(T).add(new THREE.Vector3(-12, 24, 24));
+  if (!anim) { camera.position.copy(P); controls.target.copy(T); controls.update(); return; }
+  const p0 = camera.position.clone(), t0 = controls.target.clone(); let k = 0;
+  const step = () => { k = Math.min(1, k + 0.05); const e = 1 - Math.pow(1 - k, 3);
+    camera.position.lerpVectors(p0, P, e); controls.target.lerpVectors(t0, T, e); if (k < 1) requestAnimationFrame(step); };
+  step();
+}
+
+const $ = (s) => document.querySelector(s);
+function setOn(sel, btn) { document.querySelectorAll(sel).forEach(b => b.classList.toggle('on', b === btn)); }
+$('#mExt').onclick = (e) => { selected = null; $('#card').style.display = 'none'; mode = 'ext'; deckSel = 'all'; setOn('#mExt,#mInt', e.target); setOn('[data-deck]', $('[data-deck="all"]')); apply(); };
+$('#mInt').onclick = (e) => { mode = 'int'; setOn('#mExt,#mInt', e.target); apply(); };
+function selectDeck(d, cam = true) {
+  deckSel = d; setOn('[data-deck]', $(`[data-deck="${d}"]`));
+  if (d !== 'all') { mode = 'int'; setOn('#mExt,#mInt', $('#mInt')); if (cam) setCam('top'); }
+  apply();
+}
+document.querySelectorAll('[data-deck]').forEach(b => b.onclick = () => selectDeck(b.dataset.deck));
+document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam));
+$('#water').onchange = apply;
+$('#labelsChk').onchange = updateLabels;
+$('#cut').oninput = (e) => {
+  const v = +e.target.value / 10;
+  clipX.constant = v >= 95.8 ? 1000 : (v - 47.9);
+  $('#cutV').textContent = v >= 95.8 ? 'нет' : `${v.toFixed(1).replace('.', ',')} м от кормы`;
+};
+$('#cutY').oninput = (e) => {
+  const v = +e.target.value / 10;
+  clipZ.constant = v >= 7.5 ? 1000 : v;
+  $('#cutYV').textContent = v >= 7.5 ? 'нет' : (v === 0 ? 'по ДП' : `${v.toFixed(1).replace('.', ',')} м от ДП к ЛБ`);
+};
+
+function buildCats() {
+  const counts = {};
+  META.rooms.forEach(r => counts[r.cat] = (counts[r.cat] || 0) + 1);
+  $('#cats').innerHTML = Object.entries(CATS).map(([k, [t, c]]) =>
+    `<label class="chk"><input type="checkbox" data-cat="${k}" checked><span class="sw" style="background:${c}"></span>${t}<span class="cnt">${counts[k] || 0}</span></label>`).join('');
+  document.querySelectorAll('[data-cat]').forEach(i => i.onchange = () => {
+    catOn[i.dataset.cat] = i.checked;
+    if (mode === 'ext' && deckSel === 'all') { mode = 'int'; setOn('#mExt,#mInt', $('#mInt')); }
+    apply();
+  });
+  $('#allCats').onclick = () => {
+    const any = Object.values(catOn).some(v => !v);
+    document.querySelectorAll('[data-cat]').forEach(i => { i.checked = any; catOn[i.dataset.cat] = any; });
+    apply();
+  };
+}
+function buildSummary() {
+  const s = META.summary; let tc = 0, tb = 0;
+  const rows = ['boat','mid','main','lower'].map(d => { const v = s[d] || { cab:0, berths:0 }; tc += v.cab; tb += v.berths;
+    return `<tr><td>${DECK_RU[d].replace(' палуба','')}</td><td>${v.cab}</td><td>${v.berths}</td></tr>`; }).join('');
+  $('#sum').innerHTML = `<tr><th>Палуба</th><th>Кают</th><th>Мест</th></tr>${rows}<tr><td><b>Всего</b></td><td><b>${tc}</b></td><td><b>${tb}</b></td></tr>`;
+}
+
+const labelsEl = $('#labels'); const lbls = [];
+function buildLabels() {
+  for (const r of META.rooms) {
+    if (!r.short) continue;
+    const d = document.createElement('div'); d.className = 'lbl'; d.textContent = r.short; labelsEl.appendChild(d);
+    lbls.push({ el:d, room:r, v:new THREE.Vector3(...r.pos) });
+  }
+}
+function updateLabels() {
+  const on = $('#labelsChk').checked && (deckSel !== 'all' || mode === 'int');
+  for (const l of lbls) l.show = on && roomById[l.room.id] && roomById[l.room.id].mesh.visible && (deckSel !== 'all' || l.room.deck === 'boat');
+}
+const tmp = new THREE.Vector3();
+function drawLabels() {
+  const dist = camera.position.distanceTo(controls.target);
+  for (const l of lbls) {
+    const cutOff = l.v.x > clipX.constant || -l.v.z > clipZ.constant;
+    if (!l.show || dist > 190 || cutOff) { l.el.style.display = 'none'; continue; }
+    tmp.copy(l.v).project(camera);
+    if (tmp.z > 1) { l.el.style.display = 'none'; continue; }
+    l.el.style.display = 'block';
+    l.el.style.left = ((tmp.x + 1) / 2 * innerWidth) + 'px';
+    l.el.style.top = ((1 - tmp.y) / 2 * innerHeight) + 'px';
+  }
+}
+
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = $('#tip');
+function pick(ev) {
+  mouse.set(ev.clientX / innerWidth * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const vis = parts.filter(p => p.mesh.visible && p.kind !== 'win').map(p => p.mesh);
+  const hits = ray.intersectObjects(vis, false).filter(h => h.point.x <= clipX.constant + 1e-3 && -h.point.z <= clipZ.constant + 1e-3);
+  for (const h of hits) {
+    const p = parts.find(q => q.mesh === h.object);
+    if (p.mesh.material.transparent) continue;
+    return p;
+  }
+  return null;
+}
+const fmt = (n) => String(n).replace('.', ',');
+renderer.domElement.addEventListener('pointermove', (ev) => {
+  const p = pick(ev);
+  if (p && (p.kind === 'room' || mode === 'ext')) {
+    tip.innerHTML = p.room ? `<b>${p.room.name}</b><br>${DECK_RU[p.deck]} · ${fmt(p.room.area)} м²` : `<b>${p.name || ''}</b>`;
+    tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 12) + 'px';
+  } else tip.style.display = 'none';
+});
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', (ev) => downAt = [ev.clientX, ev.clientY]);
+renderer.domElement.addEventListener('pointerup', (ev) => {
+  if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 5) return;
+  const p = pick(ev);
+  if (p && p.room) showCard(p); else if (selected) hideCard();
+});
+function showCard(p) {
+  selected = p; const r = p.room;
+  $('#cardT').textContent = r.name;
+  const rows = [['Палуба', DECK_RU[r.deck]], ['Тип', CATS[r.cat][0]], ['Площадь', fmt(r.area) + ' м²'],
+    ['Габарит', `${fmt(r.lx)} × ${fmt(r.ly)} м`], ['Положение', `${fmt(r.xa)}–${fmt(r.xb)} м от кормы`]];
+  $('#cardD').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd style="margin:0">${b}</dd>`).join('');
+  $('#card').style.display = 'block'; apply();
+}
+function hideCard() { selected = null; $('#card').style.display = 'none'; apply(); }
+$('#cardX').onclick = hideCard;
+
+$('#q').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const q = e.target.value.trim().toLowerCase().replace(/^№\s*/, '');
+  const err = $('#qErr');
+  if (!q) { err.textContent = 'Введите номер каюты или название'; return; }
+  const r = META.rooms.find(r => r.short.toLowerCase() === q) || META.rooms.find(r => r.name.toLowerCase().includes(q));
+  if (!r) { err.textContent = 'Ничего не найдено'; return; }
+  err.textContent = '';
+  if (!catOn[r.cat]) { catOn[r.cat] = true; document.querySelector(`[data-cat="${r.cat}"]`).checked = true; }
+  selectDeck(r.deck, false);
+  showCard(roomById[r.id]);
+  setCam('focus', true, new THREE.Vector3(...r.pos));
+});
+$('#q').addEventListener('input', () => $('#qErr').textContent = '');
+
+addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); drawLabels(); });
+</script>
+</body>
+</html>
