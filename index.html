@@ -122,12 +122,12 @@
 <div class="hint">Вращать — левая кнопка · сдвиг — правая · масштаб — колесо · клик по помещению — карточка</div>
 
 <script src="model588.js"></script>
-<script src="rooms.js"></script>
+<script src="rooms.js?v=20261117b"></script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createPeople } from './npc.js';
+import { createPeople } from './npc.js?v=20261117b';
 
 const CATS = {
   cab:   ['Каюты 2-местные', '#78c887'],
@@ -185,9 +185,9 @@ function loadGLB(cb) {
   if (window.MODEL588_B64) {
     const bin = Uint8Array.from(atob(window.MODEL588_B64), c => c.charCodeAt(0)).buffer;
     loader.parse(bin, '', cb, fail);
-  } else loader.load('model588.glb', cb, undefined, fail);
+  } else loader.load('model588.glb?v=20261117b', cb, undefined, fail);
 }
-function fail() { document.getElementById('load').textContent = 'Не удалось загрузить модель.'; }
+function fail() { const l = document.getElementById('load'); if (l) l.textContent = 'Не удалось загрузить модель.'; }
 
 loadGLB((gltf) => {
   gltf.scene.traverse((o) => {
@@ -208,7 +208,7 @@ loadGLB((gltf) => {
   });
   scene.add(gltf.scene);
   document.getElementById('load').remove();
-  crowd = createPeople(scene, META, clips);
+  try { crowd = createPeople(scene, META, clips); } catch (e) { console.error(e); }
   buildCats(); buildSummary(); buildLabels(); apply(); setCam('iso', false);
 });
 

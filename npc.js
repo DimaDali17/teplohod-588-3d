@@ -122,7 +122,7 @@ export function createPeople(scene, meta, clips) {
   walker(guest('lower'), [[47, 2.2, 1.98], [68, 2.2, 1.98]], { speed: 0.8, start: 0.6 });
 
   // --- сидящие ---
-  for (const s of meta.seats) {
+  for (const s of (meta.seats || [])) {
     if (s.staff) { sitter({ name: s.staff, deck: s.deck, shirt: 0xffffff, pants: 0x111111 }, s); continue; }
     const crew = s.room === 'Кают-компания';
     const chance = crew ? 0.5 : (s.room.startsWith('Дискозал') ? 0.3 : 0.5);
