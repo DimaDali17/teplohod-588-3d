@@ -166,12 +166,63 @@ def furniture(poly, cat, z0):
         tb = trimesh.creation.box(extents=[0.5, 0.45, 0.7])
         tb.apply_translation([(x0 + x1) / 2, yout - sgn * 0.3, z0 + 0.35])
         out.append((tb, (200, 170, 130)))
+        yin = y0 if port else y1
+        wd = trimesh.creation.box(extents=[0.6, 0.55, 1.9])
+        wd.apply_translation([x0 + 0.38, yin + sgn * 0.33, z0 + 0.95])
+        out.append((wd, (190, 160, 120)))
+        wb = trimesh.creation.box(extents=[0.45, 0.35, 0.85])
+        wb.apply_translation([x1 - 0.3, yin + sgn * 0.25, z0 + 0.42])
+        out.append((wb, (235, 240, 245)))
     elif cat in ("lux", "suite"):
         bw = min(1.6, w * 0.45)
         out.append((bed(x0 + 0.1, x0 + 0.1 + bw, z0, depth=min(2.0, d - 0.6)), BED))
         s = trimesh.creation.box(extents=[0.8, max(0.8, min(1.8, d - 1.0)), 0.5])
         s.apply_translation([x1 - 0.5, (y0 + y1) / 2, z0 + 0.25])
         out.append((s, SOFA))
+    return out
+
+SEATS = []
+
+def chair(cx, cy, ang, z0):
+    c = trimesh.creation.box(extents=[0.42, 0.42, 0.45]); c.apply_translation([0, 0, 0.225])
+    b = trimesh.creation.box(extents=[0.06, 0.42, 0.45]); b.apply_translation([-0.18, 0, 0.67])
+    m = trimesh.util.concatenate([c, b])
+    m.apply_transform(trimesh.transformations.rotation_matrix(ang, [0, 0, 1]))
+    m.apply_translation([cx, cy, z0])
+    return m
+
+def pub_furniture(deck, name, poly, z0):
+    out = []
+    inner = poly.buffer(-0.9)
+    if inner.is_empty:
+        return out
+    x0, y0, x1, y1 = inner.bounds
+    bar_x = None
+    if "Бар" in name:
+        bar_x = x1 - 0.6
+        cnt = trimesh.creation.box(extents=[0.6, 5.0, 1.1]); cnt.apply_translation([bar_x, 0, z0 + 0.55])
+        out.append((cnt, (120, 80, 50)))
+        for yy in (-1.6, -0.5, 0.6, 1.7):
+            st = trimesh.creation.cylinder(radius=0.18, height=0.75, sections=10); st.apply_translation([bar_x - 0.75, yy, z0 + 0.375])
+            out.append((st, (60, 60, 60)))
+            SEATS.append({"deck": deck, "pos": to3(bar_x - 0.75, yy, z0 + 0.3), "rot": 0.0, "room": name, "stool": True})
+        SEATS.append({"deck": deck, "pos": to3(bar_x + 0.6, 0.3, z0), "rot": 3.1416, "room": name, "staff": "Бармен"})
+        x1 = bar_x - 1.6
+    step = 2.4
+    xs_ = np.arange(x0 + 0.6, x1 - 0.3, step)
+    ys_ = np.arange(-((y1 - y0) // step) * step / 2, (y1 - y0) / 2, step)
+    from shapely.geometry import Point
+    for xx in xs_:
+        for yy in ys_:
+            if not inner.contains(Point(xx, yy).buffer(0.9)):
+                continue
+            top = trimesh.creation.cylinder(radius=0.45, height=0.05, sections=16); top.apply_translation([xx, yy, z0 + 0.74])
+            leg = trimesh.creation.cylinder(radius=0.06, height=0.72, sections=8); leg.apply_translation([xx, yy, z0 + 0.36])
+            out.append((top, (250, 250, 250))); out.append((leg, (90, 90, 90)))
+            for k, (dx, dy) in enumerate(((0.75, 0), (-0.75, 0), (0, 0.75), (0, -0.75))):
+                ang = np.arctan2(-dy, -dx)
+                out.append((chair(xx + dx, yy + dy, ang + np.pi, z0), (150, 60, 50)))
+                SEATS.append({"deck": deck, "pos": to3(xx + dx, yy + dy, z0), "rot": round(float(np.arctan2(dy, dx)), 3), "room": name, "table": to3(xx, yy, z0)})
     return out
 
 def room(deck, label, short, poly, cat, z, beds=True):
@@ -183,6 +234,10 @@ def room(deck, label, short, poly, cat, z, beds=True):
     if beds:
         for f, c in furniture(poly, cat, z0 + 0.06):
             parts.append(colored(f, c))
+    if cat == "pub" and "Вестибюль" not in label:
+        for f, c in pub_furniture(deck, label, poly, z0 + 0.06):
+            parts.append(colored(f, c))
+
     idx = len(rooms_meta)
     meshes.append((f"{deck}-room-r{idx}", trimesh.util.concatenate(parts)))
     x0, y0, x1, y1 = poly.bounds
@@ -440,8 +495,8 @@ for r in rooms_meta:
     if r["cat"] in ("cab", "cab4", "lux", "suite"):
         d["cab"] += 1
         d["berths"] += 4 if r["cat"] == "cab4" else (1 if "1-местн" in r["name"] else 2)
-json.dump({"rooms": rooms_meta, "parts": parts_meta, "summary": summary},
+json.dump({"rooms": rooms_meta, "parts": parts_meta, "summary": summary, "seats": SEATS},
           open("/home/claude/web/rooms.json", "w"), ensure_ascii=False)
 print("meshes", len(meshes) + 1, "rooms", len(rooms_meta), os.path.getsize("/home/claude/web/model588.glb") // 1024, "KB")
 print(summary)
-print([ (r["name"], r["area"]) for r in rooms_meta if r["name"].startswith("Каюта №26")])
+print("seats", len(SEATS))

@@ -103,6 +103,8 @@
     <div style="font-size:12px">Разрез по ширине: <span id="cutYV">нет</span></div>
     <input type="range" id="cutY" min="0" max="75" value="75">
     <label class="chk"><input type="checkbox" id="water" checked> Вода (осадка 2,4 м)</label>
+    <label class="chk"><input type="checkbox" id="peopleChk" checked> Люди: экипаж и пассажиры</label>
+    <label class="chk"><input type="checkbox" id="moveChk" checked> Движение</label>
   </div>
 
   <div class="grp">
@@ -125,6 +127,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createPeople } from './npc.js';
 
 const CATS = {
   cab:   ['Каюты 2-местные', '#78c887'],
@@ -174,6 +177,8 @@ const META = window.ROOMS588;
 const parts = [];
 const roomById = {};
 let mode = 'ext', deckSel = 'all', selected = null;
+let crowd = null;
+const clock = new THREE.Clock();
 
 function loadGLB(cb) {
   const loader = new GLTFLoader();
@@ -203,6 +208,7 @@ loadGLB((gltf) => {
   });
   scene.add(gltf.scene);
   document.getElementById('load').remove();
+  crowd = createPeople(scene, META, clips);
   buildCats(); buildSummary(); buildLabels(); apply(); setCam('iso', false);
 });
 
@@ -223,6 +229,15 @@ function apply() {
     m.emissive.setHex(selected && p === selected ? 0x664400 : 0x000000);
   }
   water.visible = document.getElementById('water').checked && deckSel !== 'lower';
+  if (crowd) {
+    const on = document.getElementById('peopleChk').checked;
+    for (const n of crowd.people) {
+      let v = on;
+      if (deckSel === 'all') v = v && (n.deck !== 'lower' || inside);
+      else v = v && n.deck === deckSel;
+      n.g.visible = v;
+    }
+  }
   updateLabels();
 }
 
@@ -253,6 +268,7 @@ function selectDeck(d, cam = true) {
 document.querySelectorAll('[data-deck]').forEach(b => b.onclick = () => selectDeck(b.dataset.deck));
 document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => setCam(b.dataset.cam));
 $('#water').onchange = apply;
+$('#peopleChk').onchange = apply;
 $('#labelsChk').onchange = updateLabels;
 $('#cut').oninput = (e) => {
   const v = +e.target.value / 10;
@@ -318,18 +334,30 @@ const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = $('#tip');
 function pick(ev) {
   mouse.set(ev.clientX / innerWidth * 2 - 1, -(ev.clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(mouse, camera);
+  const inCut = (h) => h.point.x <= clipX.constant + 1e-3 && -h.point.z <= clipZ.constant + 1e-3;
+  let nh = null;
+  if (crowd) {
+    const ms = []; for (const n of crowd.people) if (n.g.visible) n.g.traverse(o => { if (o.isMesh) ms.push(o); });
+    nh = ray.intersectObjects(ms, false).filter(inCut)[0] || null;
+  }
   const vis = parts.filter(p => p.mesh.visible && p.kind !== 'win').map(p => p.mesh);
-  const hits = ray.intersectObjects(vis, false).filter(h => h.point.x <= clipX.constant + 1e-3 && -h.point.z <= clipZ.constant + 1e-3);
+  const hits = ray.intersectObjects(vis, false).filter(inCut);
   for (const h of hits) {
     const p = parts.find(q => q.mesh === h.object);
     if (p.mesh.material.transparent) continue;
+    if (nh && nh.distance < h.distance) return { npc: nh.object.userData.npc };
     return p;
   }
-  return null;
+  return nh ? { npc: nh.object.userData.npc } : null;
 }
 const fmt = (n) => String(n).replace('.', ',');
 renderer.domElement.addEventListener('pointermove', (ev) => {
   const p = pick(ev);
+  if (p && p.npc) {
+    tip.innerHTML = `<b>${p.npc}</b>`;
+    tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 12) + 'px';
+    return;
+  }
   if (p && (p.kind === 'room' || mode === 'ext')) {
     tip.innerHTML = p.room ? `<b>${p.room.name}</b><br>${DECK_RU[p.deck]} · ${fmt(p.room.area)} м²` : `<b>${p.name || ''}</b>`;
     tip.style.display = 'block'; tip.style.left = (ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 12) + 'px';
@@ -340,7 +368,7 @@ renderer.domElement.addEventListener('pointerdown', (ev) => downAt = [ev.clientX
 renderer.domElement.addEventListener('pointerup', (ev) => {
   if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 5) return;
   const p = pick(ev);
-  if (p && p.room) showCard(p); else if (selected) hideCard();
+  if (p && p.room) showCard(p); else if (selected && !(p && p.npc)) hideCard();
 });
 function showCard(p) {
   selected = p; const r = p.room;
@@ -369,7 +397,7 @@ $('#q').addEventListener('keydown', (e) => {
 $('#q').addEventListener('input', () => $('#qErr').textContent = '');
 
 addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
-renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); drawLabels(); });
+renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.1); if (crowd && document.getElementById('moveChk').checked) crowd.update(dt); controls.update(); renderer.render(scene, camera); drawLabels(); });
 </script>
 </body>
 </html>
